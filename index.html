@@ -14,7 +14,7 @@ paused = false;
 // engine settings
 gravity = vec2(0, 0);
 cameraPos = vec2(0, 0);
-cameraScale = 26;
+cameraScale = 38;
 
 class SoundGenerator extends Sound 
 {
@@ -43,7 +43,7 @@ class SoundGenerator extends Sound
 ///////////////////////////////////////////////////////////////////////////////
 // Invaders Game Variables
 
-const gridSize = vec2(28, 28);
+const gridSize = vec2(50, 25);
 let snake;
 let direction;
 let nextDirection;
@@ -131,7 +131,7 @@ function spawnScorpion()
 ///////////////////////////////////////////////////////////////////////////////
 async function gameInit()
 {
-    setCanvasFixedSize(vec2(720,720));
+    setCanvasFixedSize(vec2(window.innerWidth, window.innerHeight));
     cameraPos = gridSize.scale(.5);
     
     eatSound = new SoundGenerator({frequency:600, release:.05});
@@ -163,14 +163,14 @@ function gameUpdate() {
     // spawn spiders
     if (spiderSpawnTimer.elapsed())
     {
-        spiderSpawnTimer.set(rand(1.5, 3));
+        spiderSpawnTimer.set(rand(1, 3));
         spawnSpider();
     }
 
     // spawn scorpion warnings
     if (scorpionSpawnTimer.elapsed())
     {
-        scorpionSpawnTimer.set(rand(3, 5));
+        scorpionSpawnTimer.set(rand(2, 5));
         // Find a valid position for scorpion
         let x = randInt(gridSize.x - 1);
         // cant be too close of lastScorptionPosition
@@ -386,7 +386,7 @@ function gameRender()
     // background
     const tileWidth = 16;
     const rows = 30 / 0.57;
-    const cols = 30 / 0.57;
+    const cols = 60 / 0.57;
     for (let i = 0; i < cols; i++) {
         for (let j = 0; j < rows; j++) {
             drawTile(vec2(i * 0.57, j * 0.57), vec2(0.57), tile(0, vec2(16, 16), 4));
@@ -513,6 +513,6 @@ function gameRenderPost()
 
 ///////////////////////////////////////////////////////////////////////////////
 engineInit(gameInit, gameUpdate, gameUpdatePost, gameRender, gameRenderPost, 
-['spider_42x42.png', 'snake_32x32.png', 'scorpion_64x122.png', 'warning_64x64.png', 'background_tile_16x16.png']);
+['spider_42x42.png', 'snake_32x32.png', 'scorpion_64x122.png', 'warning_64x64.png', 'background_tile_16x16.png', 'stone_snake_32x32.png']);
 
 </script>
