@@ -65,6 +65,9 @@ let eatSound;
 let dieSound;
 let hitSound;
 
+let isImmortal = false;
+let immortalityTicks = null;
+
 ///////////////////////////////////////////////////////////////////////////////
 function resetGame()
 {
@@ -81,9 +84,11 @@ function resetGame()
     bulletMoveTimer = new Timer(bulletMoveDelay);
     spiderSpawnTimer = new Timer(2);
     scorpionSpawnTimer = new Timer(3);
+    isImmortal = false;
+    immortalityTicks = null;
 }
 
-function spawnSpider()
+function spawnSpider(isPowerUp = false)
 {
     const fromTop = rand() < 0.5;
     const y = fromTop ? gridSize.y - 1 : 0;
@@ -104,27 +109,7 @@ function spawnSpider()
     if (!spiders.find(i => i.pos.x == p.x && i.pos.y == p.y) && 
         !snake.find(s => s.x == p.x && s.y == p.y))
     {
-        spiders.push({pos: p, dir: dir});
-    }
-}
-
-function spawnScorpion()
-{
-    const x = randInt(gridSize.x - 1); // -1 to account for 2x2 size
-    const p = vec2(x, gridSize.y - 1); // -1 to spawn with bottom 2 rows visible
-    // Check if all 4 positions are clear for 2x2 scorpion
-    const positions = [p, vec2(p.x+1, p.y), vec2(p.x, p.y+1), vec2(p.x+1, p.y+1)];
-    const allClear = positions.every(pos => 
-        !scorpions.find(b => {
-            const bPos = [b.pos, vec2(b.pos.x+1, b.pos.y), vec2(b.pos.x, b.pos.y+1), vec2(b.pos.x+1, b.pos.y+1)];
-            return bPos.some(bp => bp.x == pos.x && bp.y == pos.y);
-        }) &&
-        !spiders.find(i => i.pos.x == pos.x && i.pos.y == pos.y) &&
-        !snake.find(s => s.x == pos.x && s.y == pos.y)
-    );
-    if (allClear)
-    {
-        scorpions.push({pos: p, dir: vec2(0, -1)});
+        spiders.push({pos: p, dir: dir, isPowerUp: isPowerUp});
     }
 }
 
@@ -144,6 +129,7 @@ async function gameInit()
 let tickNumber = 0;
 let nextTurnSpawnScorpion = false;
 let lastScorptionPosition = null;
+let nextSpiderIsPowerUp = false;
 ///////////////////////////////////////////////////////////////////////////////
 function gameUpdate() {
     if (gameOver) {
@@ -164,7 +150,8 @@ function gameUpdate() {
     if (spiderSpawnTimer.elapsed())
     {
         spiderSpawnTimer.set(rand(1, 3));
-        spawnSpider();
+        spawnSpider(nextSpiderIsPowerUp);
+        nextSpiderIsPowerUp = false;
     }
 
     // spawn scorpion warnings
@@ -206,22 +193,29 @@ function gameUpdate() {
         justAte = false;
         tickNumber++;
         
+        // Spawn power-up every 100 ticks
+        if (tickNumber % 100 === 0 && !isImmortal)
+        {
+            nextSpiderIsPowerUp = true;
+        }
+        
         // Update scorpion warnings and spawn when ready
         for (let i = scorpionWarnings.length - 1; i >= 0; i--) {
             scorpionWarnings[i].countdown--;
-            if (scorpionWarnings[i].countdown <= 0)
+            if (scorpionWarnings[i].countdown === 0)
             {
                 const p = scorpionWarnings[i].pos;
                 const dir = scorpionWarnings[i].dir;
-                scorpions.push({pos: p, dir: dir});
+                scorpions.push({pos: p, dir: dir, isBlack: rand() < 0.20}); // 20% chance to spawn a black scorpion (faster)
                 scorpionWarnings.splice(i, 1);
             }
         }
 
         // move scorpions every 2 turns 
-        if (tickNumber % 2 === 0) { 
-            for (let i = scorpions.length - 1; i >= 0; i--)
-            {
+        
+        for (let i = scorpions.length - 1; i >= 0; i--)
+        {
+            if ((!scorpions[i].isBlack && tickNumber % 2 === 0) || scorpions[i].isBlack) { 
                 scorpions[i].pos = scorpions[i].pos.add(scorpions[i].dir);
                 // Remove when off screen (check both directions)
                 if (scorpions[i].pos.y < -1 || scorpions[i].pos.y >= gridSize.y || scorpions[i].pos.x < 0 || scorpions[i].pos.x + 1 >= gridSize.x)
@@ -288,6 +282,7 @@ function updateSnake()
 
     snake.unshift(head);
 
+
     // check if eating spider
     const invaderIndex = spiders.findIndex(i => 
         // if snake move towards spider
@@ -295,20 +290,20 @@ function updateSnake()
         // if spider moved onto snake head and was goin the opposite direction of the snake
         || (prevHead.x == i.pos.x && prevHead.y == i.pos.y && direction.x == -i.dir.x && direction.y == -i.dir.y) 
     );
-    if (invaderIndex !== -1)
+
+    // Update immortality timer
+    if (immortalityTicks > 0)
     {
-        score++;
-        eatSound.play();
-        spiders.splice(invaderIndex, 1);
-        // snake grows (don't pop tail)
-        justAte = true;
+        immortalityTicks--;
     }
-    else
+    if (isImmortal && immortalityTicks === 0)
     {
-        snake.pop();
+        isImmortal = false;
+        immortalityTicks = null;
     }
 
     // check if any scorpion hits any part of snake (check all 4 positions of 2x2 scorpion)
+    let ateScorpion = false;
     for (let i = scorpions.length - 1; i >= 0; i--)
     {
         const bulletPositions = [
@@ -338,22 +333,50 @@ function updateSnake()
 
         if (snakeIndex !== -1)
         {
-            hitSound.play();
-            // scorpions.splice(i, 1);
-            
-            // if head is hit game over
-            if (snakeIndex === 0)
+            if (isImmortal)
             {
-                die();
-                return;
+                // When immortal, eat the scorpion instead of taking damage
+                ateScorpion = true;
+                scorpions.splice(i, 1);
             }
-            
-            // remove the snake segment that was hit and everything after it (the tail is more likely to be hit and it's less punishing to lose length than to lose the head)
-            snake.splice(snakeIndex);
-            break;
-            
+            else
+            {
+                hitSound.play();
+                // scorpions.splice(i, 1);
+                
+                // if head is hit game over
+                if (snakeIndex === 0)
+                {
+                    die();
+                    return;
+                }
+                
+                // remove the snake segment that was hit and everything after it (the tail is more likely to be hit and it's less punishing to lose length than to lose the head)
+                snake.splice(snakeIndex);
+                break;
+            }
         }
     }
+
+    if (invaderIndex !== -1 || ateScorpion)
+    {
+        score++;
+        eatSound.play();
+        if (invaderIndex !== -1 && spiders[invaderIndex].isPowerUp) {
+            isImmortal = true;
+            immortalityTicks = 120; // 120 ticks of immortality
+            eatSound.play();
+            snake.pop();
+        }
+        spiders.splice(invaderIndex, 1);
+        // snake grows (don't pop tail)
+        justAte = true;
+    }
+    else
+    {
+        snake.pop();
+    }
+    
 
     // check if any spider hits the snake (non-head)
     // for (let i = spiders.length - 1; i >= 0; i--)
@@ -394,6 +417,8 @@ function gameRender()
     }
     // drawTile(cameraPos, gridSize, tile(0, vec2(1000, 1000), 4));
     const frame = (time*2)%2|0;
+    const blackScorFrame = (time*4)%2|0; // faster animation for black scorpions
+    let snakeSpritesheet = isImmortal ? 5 : 1; // use different spritesheet when immortal
 
     // scorpion warnings
     for (let warning of scorpionWarnings)
@@ -411,25 +436,13 @@ function gameRender()
     for (let spider of spiders)
     {
         // drawRect(spider.pos.add(vec2(.5)), vec2(1), hsl(.55,1,.5)); // cyan
+        const spriteSheet = spider.isPowerUp ? 6 : 0; // use different spritesheet for power-up spiders
         const pos = spider.pos.add(vec2(.5));
         // console.log(pos, frame);
-        drawTile(pos, vec2(1), tile(0, vec2(42, 42), 0).frame(frame));
+        drawTile(pos, vec2(1), tile(0, vec2(42, 42), spriteSheet).frame(frame));
     }
 
-    for (let i=1; i<snake.length; i++)
-    {
-        let angle = 0;
-        let tilePos = vec2(0,4);
-        // if right to left or left to right rotate it 90 degrees to better fit the line connection
-        if ((snake[i].y == snake[i-1].y) && (i === snake.length - 1 || snake[i].y == snake[i+1].y)) {
-            angle = 90 * (Math.PI / 180);
-        }
-        const newTile = tile(tilePos.y * 4 + tilePos.x, vec2(32, 32), 1);
-        drawTile(snake[i].add(vec2(.5)), vec2(1), newTile, undefined, angle);
-    }
-
-
-    // draw lines between snake segments
+        // draw lines between snake segments
     for (let i = 0; i < snake.length - 1; i++)
     {
         let start = snake[i].add(vec2(.5));
@@ -440,8 +453,35 @@ function gameRender()
             start = start.add(vec2(-.1, 0));
             end = end.add(vec2(-.1, 0));
         }
-        drawLine(start, end, .3, hsl(.147, 1, .55));
+        let angle = 0;
+        if (snake[i].y === snake[i+1].y) {
+            angle = 90 * (Math.PI / 180);
+        }
+
+        // drawLine(start, end, .3, hsl(.147, 1, .55));
+        // Instead of drawing the line using drawLine lets draw the line manually by using a tile
+        drawTile(
+            start.lerp(end, 0.5), // position the tile in the middle of the two segments
+            vec2(1, end.distance(start)), // scale the tile to be as long as the distance between the two segments
+            tile(17, vec2(32, 32), snakeSpritesheet), // use the line tile from the spritesheet
+            undefined,
+            angle
+        );
     }
+
+
+    for (let i=1; i<snake.length; i++)
+    {
+        let angle = 0;
+        // if right to left or left to right rotate it 90 degrees to better fit the line connection
+        if ((snake[i].y == snake[i-1].y) && (i === snake.length - 1 || snake[i].y == snake[i+1].y)) {
+            angle = 90 * (Math.PI / 180);
+        }
+        const newTile = tile(16, vec2(32, 32), snakeSpritesheet);
+        drawTile(snake[i].add(vec2(.5)), vec2(1), newTile, undefined, angle);
+    }
+
+
 
     /*
     snake spritesheet is
@@ -450,7 +490,7 @@ function gameRender()
         [bottom, bottom_eating, top, top_eating],
         [right, right_eating, left, left_eating],
         [top_right, top_right_eating, top_left, top_left_eating],
-        [body]
+        [body, line]
     ]
     */
     let headPos;
@@ -471,7 +511,7 @@ function gameRender()
     // top_left
     else if (direction.x == -1 && direction.y == 1) headPos = vec2(2,3);
     
-    const headTile = tile(headPos.y * 4 + headPos.x, vec2(32, 32), 1);
+    const headTile = tile(headPos.y * 4 + headPos.x, vec2(32, 32), snakeSpritesheet);
     drawTile(snake[0].add(vec2(.5)), vec2(1), headTile.frame(justAte ? 1 : 0));
 
     
@@ -483,7 +523,7 @@ function gameRender()
         drawTile(
             scorpion.pos.add(vec2(1)),
             vec2(1.5, 3),
-            tile(0, vec2(64, 122), 2).frame(frame),
+            tile(0, vec2(64, 122), scorpion.isBlack ? 7 : 2).frame( scorpion.isBlack ? blackScorFrame : frame),
             WHITE,
             scorpion.dir.y > 0 ? 180 * (Math.PI / 180) : 0,
         );
@@ -502,7 +542,12 @@ function gameRender()
 ///////////////////////////////////////////////////////////////////////////////
 function gameRenderPost()
 {
-    drawTextScreen(`Score: ${score}  Length: ${snake.length}`, vec2(mainCanvasSize.x/2, 40), 40, WHITE, 4, BLACK);
+    let statusText = `Score: ${score}  Length: ${snake.length}`;
+    if (isImmortal && immortalityTicks)
+    {
+        statusText += `  IMMORTAL: ${immortalityTicks}s`;
+    }
+    drawTextScreen(statusText, vec2(mainCanvasSize.x/2, 40), 40, WHITE, 4, BLACK);
 
     if (gameOver)
     {
@@ -513,6 +558,7 @@ function gameRenderPost()
 
 ///////////////////////////////////////////////////////////////////////////////
 engineInit(gameInit, gameUpdate, gameUpdatePost, gameRender, gameRenderPost, 
-['spider_42x42.png', 'snake_32x32.png', 'scorpion_64x122.png', 'warning_64x64.png', 'background_tile_16x16.png', 'stone_snake_32x32.png']);
+['spider_42x42.png', 'snake_32x32.png', 'scorpion_64x122.png', 'warning_64x64.png',
+'background_tile_16x16.png', 'stone_snake_32x32.png', 'spider_powerup_42x42.png', 'black_scorpion_64x122.png']);
 
 </script>
