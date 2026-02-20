@@ -69,6 +69,11 @@ let frame = 0;
  *  @memberof Engine */
 let time = 0;
 
+
+let timeScale = 1; // multiplier for time, can be used for slow motion or fast forward
+
+function setTimeScale(newTimeScale) { timeScale = newTimeScale; }
+
 /** Actual clock time since start in seconds (not affected by pause or frame rate clamping)
  *  @type {number}
  *  @memberof Engine */
@@ -200,12 +205,14 @@ async function engineInit(gameInit, gameUpdate, gameUpdatePost, gameRender, game
             averageFPS = lerp(averageFPS, 1e3/(frameTimeDeltaMS||1), .05);
         const debugSpeedUp   = debug && keyIsDown('Equal'); // +
         const debugSpeedDown = debug && keyIsDown('Minus'); // -
-        if (debug) // +/- to speed/slow time
-            frameTimeDeltaMS *= debugSpeedUp ? 10 : debugSpeedDown ? .1 : 1;
+
+        frameTimeDeltaMS *= timeScale;
+
         timeReal += frameTimeDeltaMS / 1e3;
         frameTimeBufferMS += paused ? 0 : frameTimeDeltaMS;
-        if (!debugSpeedUp)
+        if (timeScale <= 1) {
             frameTimeBufferMS = min(frameTimeBufferMS, 50); // clamp min framerate
+        }
 
         let wasUpdated = false;
         if (paused)
