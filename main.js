@@ -878,7 +878,7 @@ function gameRender() {
 
 ///////////////////////////////////////////////////////////////////////////////
 function gameRenderPost() {
-    let statusText = `Level: ${currentLevel} - Length: ${snake.length} / ${goal} ticks: ${tickNumber} - Score: ${score}`;
+    let statusText = `Level: ${currentLevel} - Length: ${snake.length} / ${goal}`;
     if (getPaused()) {
         let startText = `Press Space to Start`;
         if (isTouchDevice) {
