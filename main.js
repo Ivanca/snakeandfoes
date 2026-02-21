@@ -145,7 +145,7 @@ function resetGame(keepLevel = false) {
     lasers = [];
     document.querySelector('.social').classList.add('hidden');
     if (!keepLevel) {
-        currentLevel = 3;
+        currentLevel = 1;
     }
     if (currentLevel === 2) {
         waterPools = [{
