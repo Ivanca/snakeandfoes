@@ -111,9 +111,9 @@ let currentLevel = 1;
 // Water pool for level 2 - centered, 1/3 width and 1/3 height
 let waterPools = [];
 let eatSound;
-let dieSound;
 let hitSound;
 let laserSound;
+let gameoverSound;
 
 let isImmortal = false;
 let immortalityTicks = null;
@@ -145,7 +145,7 @@ function resetGame(keepLevel = false) {
     lasers = [];
     document.querySelector('.social').classList.add('hidden');
     if (!keepLevel) {
-        currentLevel = 1;
+        currentLevel = 3;
     }
     if (currentLevel === 2) {
         waterPools = [{
@@ -158,25 +158,25 @@ function resetGame(keepLevel = false) {
         snake = [vec2(10,4), vec2(9,4), vec2(8,4)];
         waterPools = [
             {
-                x: 9,
+                x: 8,
                 y: 6,
-                width: 10,
+                width: 11,
                 height: 13
             },
             {
-                x: 8,
+                x: 7,
                 y: 7,
                 width: 1,
                 height: 11
             },
             {
-                x: 7,
+                x: 6,
                 y: 9,
                 width: 1,
                 height: 7
             },
             {
-                x: 6,
+                x: 5,
                 y: 11,
                 width: 1,
                 height: 3
@@ -203,7 +203,7 @@ function resetGame(keepLevel = false) {
             {
                 x: 31,
                 y: 6,
-                width: 10,
+                width: 11,
                 height: 13
             },
             {
@@ -225,19 +225,19 @@ function resetGame(keepLevel = false) {
                 height: 3
             },
             {
-                x: 9 + 11 + 21,
+                x: 10 + 11 + 21,
                 y: 7,
                 width: 1,
                 height: 11
             },
             {
-                x: 8 + 13 + 21,
+                x: 9 + 13 + 21,
                 y: 9,
                 width: 1,
                 height: 7
             },
             {
-                x: 7 + 15 + 21,
+                x: 8 + 15 + 21,
                 y: 11,
                 width: 1,
                 height: 3
@@ -278,12 +278,9 @@ async function gameInit() {
     cameraPos = gridSize.scale(.5);
     
     eatSound = new SoundGenerator({frequency:600, release:.05});
-    dieSound = new SoundGenerator({frequency:120, release:.3, slide:-.2});
     hitSound = new SoundGenerator({frequency:200, release:.15, noise:.1});
-    laserSound = new Sound([0.7,,50,.5,.05,.1,-3,0.8,.05,-300])
-    setTimeout(() => {
-        laserSound.play() // debug
-    }, 5000);
+    laserSound = new Sound([,,528,.01,,.48,,.6,-13.6,,,,.52,4.5]);
+    gameoverSound = new Sound([,,925,.04,.3,.6,1,.3,,6.27,-184,.09,.17]);
     
     resetGame();
 }
@@ -439,7 +436,7 @@ function gameUpdate() {
     {
         justAte = false;
         tickNumber++;
-        const tickForPowerup = currentLevel === 3 ? 120 : 100;
+        const tickForPowerup = 100;
         
         
         if (tickNumber % tickForPowerup === 0) {
@@ -457,6 +454,9 @@ function gameUpdate() {
                 const dir = scorpionWarnings[i].dir;
                 // 20% chance to spawn a black scorpion (faster), but not in level 1
                 scorpions.push({pos: p, dir: dir, isBlack: currentLevel !== 1 && rand() < 0.20});
+                if (currentLevel === 3) {
+                    scorpions[scorpions.length - 1].isBlack = rand() < 0.333; // in level 3 make it 33% chance to be black
+                }
                 if (currentLevel === 1 && tickNumber > 500 && !level1SingleBlackScorpionShown) {
                     scorpions[scorpions.length - 1].isBlack = true;
                     level1SingleBlackScorpionShown = true;
@@ -481,7 +481,6 @@ function gameUpdate() {
                 // Check if any part of the scorpion is in the laser
                 if (scorpionBodyPos.some(bp => laserCells.some(lc => lc.x === bp.x && lc.y === bp.y))) {
                     score++;
-                    eatSound.play();
                     scorpions.splice(j, 1);
                     if (tickNumber - lastScorpionKillTime < 7 && !dobleKillAlreadyPlayed) {
                         const doubleKillSound = document.getElementById('double-kill-sound');
@@ -702,7 +701,7 @@ function updateSnake() {
 
 function die() {
     gameOver = true;
-    dieSound.play();
+    gameoverSound.play();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
