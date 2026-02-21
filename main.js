@@ -433,7 +433,7 @@ function gameUpdate() {
     {
         justAte = false;
         tickNumber++;
-        const tickForPowerup = currentLevel === 3 ? 120 : 10;
+        const tickForPowerup = currentLevel === 3 ? 120 : 100;
         
         
         if (tickNumber % tickForPowerup === 0) {
