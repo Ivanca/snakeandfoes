@@ -122,6 +122,7 @@ let lasers = [];
 
 ////////////////////////////////////////////////////////////////////////////////
 function resetGame(keepLevel = false) {
+    lastScorpionKillTime = 0;
     snake = [vec2(10,10), vec2(9,10), vec2(8,10)];
     direction = vec2(1,0);
     nextDirection = direction.copy();
@@ -141,6 +142,7 @@ function resetGame(keepLevel = false) {
     laserShotsAvailable = 0;
     level1SingleBlackScorpionShown = false;
     lasers = [];
+    document.querySelector('.social').classList.add('hidden');
     if (!keepLevel) {
         currentLevel = 1;
     }
@@ -288,6 +290,8 @@ let nextSpiderPowerupType = null;
 let lastDirection = null;
 let level1SingleBlackScorpionShown = false;
 let fireButtonPressed = false;
+let lastScorpionKillTime = 0;
+
 ///////////////////////////////////////////////////////////////////////////////
 function gameUpdate() {
 
@@ -429,7 +433,7 @@ function gameUpdate() {
     {
         justAte = false;
         tickNumber++;
-        const tickForPowerup = currentLevel === 3 ? 120 : 100;
+        const tickForPowerup = currentLevel === 3 ? 120 : 10;
         
         
         if (tickNumber % tickForPowerup === 0) {
@@ -456,6 +460,7 @@ function gameUpdate() {
         }
 
         // Update lasers (just decrement their remaining ticks)
+        let dobleKillAlreadyPlayed = false;
         for (let i = lasers.length - 1; i >= 0; i--) {
                     // Destroy any scorpions in the laser path
             for (let j = scorpions.length - 1; j >= 0; j--) {
@@ -472,6 +477,12 @@ function gameUpdate() {
                     score++;
                     eatSound.play();
                     scorpions.splice(j, 1);
+                    if (tickNumber - lastScorpionKillTime < 7 && !dobleKillAlreadyPlayed) {
+                        const doubleKillSound = document.getElementById('double-kill-sound');
+                        doubleKillSound.play();
+                        dobleKillAlreadyPlayed = true;
+                    }
+                    lastScorpionKillTime = tickNumber;
                 }
             }
         
@@ -480,6 +491,7 @@ function gameUpdate() {
                 lasers.splice(i, 1);
             }
         }
+
 
         
         // move scorpions every 2 turns 
@@ -878,13 +890,13 @@ function gameRender() {
 
 ///////////////////////////////////////////////////////////////////////////////
 function gameRenderPost() {
-    let statusText = `Level: ${currentLevel} - Length: ${snake.length} / ${goal}`;
+    let statusText = `Length ${snake.length} / ${goal} - Level ${currentLevel}`;
     if (getPaused()) {
         let startText = `Press Space to Start`;
         if (isTouchDevice) {
             startText = `Tap here to Start`;
         }
-        drawTextScreen(startText, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2), 40, WHITE, 4, BLACK, 'center', 'PressStart2P', 500);
+        drawTextScreen(startText, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2), 40, WHITE, 10, BLACK, 'center', 'PressStart2P', 500);
         return;
     }
 
@@ -896,20 +908,23 @@ function gameRenderPost() {
 
     if (laserShotsAvailable > 0) {
         const laserText = isTouchDevice ? `Tap here to shoot laser` : `Press space to shoot laser`;
-        drawTextScreen(laserText, vec2(mainCanvasSize.x/2, mainCanvasSize.y - 85), 30, YELLOW, 4, BLACK, 'center', 'PressStart2P', 500);
+        drawTextScreen(laserText, vec2(mainCanvasSize.x/2, mainCanvasSize.y - 85), 30, YELLOW, 10, BLACK, 'center', 'PressStart2P', 500);
     }
-    drawTextScreen(statusText, vec2(mainCanvasSize.x/2, 100), 40, WHITE, 4, BLACK, 'center', 'PressStart2P', 500);
+    drawTextScreen(statusText, vec2(mainCanvasSize.x/2, 100), 30, WHITE, 8, BLACK, 'center', 'PressStart2P', 500);
     if (gameWon) {
         let actionText = currentLevel !== 3 ? `Press Space for Next Level` : `Press Space to Restart`;
         if (isTouchDevice) {
             actionText = actionText.replace('Press Space', 'Tap here');
         }
+        if (currentLevel === 3) {
+            document.querySelector('.social').classList.remove('hidden');
+        }
         if (currentLevel !== 3) {
-            drawTextScreen(`Level ${currentLevel} Complete!`, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 - 40), 60, GREEN, 6, BLACK, 'center', 'PressStart2P', 500);            
-            drawTextScreen(actionText, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 + 20), 40, WHITE, 4, BLACK, 'center', 'PressStart2P', 500);
+            drawTextScreen(`Level ${currentLevel} Complete!`, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 - 40), 60, GREEN, 10, BLACK, 'center', 'PressStart2P', 500);            
+            drawTextScreen(actionText, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 + 20), 40, WHITE, 10, BLACK, 'center', 'PressStart2P', 500);
         } else {
-            drawTextScreen(`You Win!`, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 - 40), 60, GREEN, 6, BLACK, 'center', 'PressStart2P', 500);
-            drawTextScreen(actionText, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 + 20), 40, WHITE, 4, BLACK, 'center', 'PressStart2P', 500);
+            drawTextScreen(`You Win!`, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 - 40), 60, GREEN, 10, BLACK, 'center', 'PressStart2P', 500);
+            drawTextScreen(actionText, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 + 20), 40, WHITE, 10, BLACK, 'center', 'PressStart2P', 500);
         }
     }
 
@@ -919,8 +934,8 @@ function gameRenderPost() {
         if (isTouchDevice) {
             actionText = actionText.replace('Press Space', 'Tap here');
         }
-        drawTextScreen(`Game Over`, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 - 40), 60, RED, 6, BLACK, 'center', 'PressStart2P', 500);
-        drawTextScreen(actionText, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 + 20), 40, WHITE, 4, BLACK, 'center', 'PressStart2P', 500);
+        drawTextScreen(`Game Over`, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 - 40), 60, RED, 10, BLACK, 'center', 'PressStart2P', 500);
+        drawTextScreen(actionText, vec2(mainCanvasSize.x/2, mainCanvasSize.y/2 + 20), 40, WHITE, 10, BLACK, 'center', 'PressStart2P', 500);
     }
 }
 

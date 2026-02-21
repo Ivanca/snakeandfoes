@@ -100,6 +100,36 @@ canvas {
     background: black;
 }
 
+.social {
+    position: absolute;
+    bottom: 3cqi;
+    left: 0;
+    right: 0;
+    font-family: 'PressStart2P', monospace;
+    color: #fff;
+    font-size: 1.5cqi;
+    text-align: center;
+    padding: 1cqi 2cqi;
+    z-index: 2;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.social a {
+    color: blue;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 #000, -1px 1px 0 #ffffff, 1px -1px 0 #ffffff, -1px -1px 0 #ffffff;
+}
+
+.social p {
+    margin-bottom: 0.5cqi;
+    text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000;
+}
+
+.hidden {
+    display: none;
+}
+
 /* css rule for when height is bigger than width */
 @media (orientation: portrait) {
     #please-rotate {
@@ -109,11 +139,16 @@ canvas {
 
 </style>
 </head><body style="background:#000">
+<audio src="./double_kill.mp3" id="double-kill-sound"></audio>
     <div id="ui-root-container">
         <div id="ui-root">
             <div id="please-rotate">Please rotate your device</div>
             <button id="fire"></button>
             <button id="start"></button>
+            <div class="social hidden">
+                <p>Android/iOS version coming soon!</p>
+                <a href="https://x.com/NotSoAAA_" target="_blank" rel="noopener noreferrer">Follow me on Twitter for updates about it!</a>
+            </div>
         </div>
     </div>
 <script src="./TinyGesture.js"  type="module"></script>
