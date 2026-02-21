@@ -113,6 +113,7 @@ let waterPools = [];
 let eatSound;
 let dieSound;
 let hitSound;
+let laserSound;
 
 let isImmortal = false;
 let immortalityTicks = null;
@@ -279,6 +280,10 @@ async function gameInit() {
     eatSound = new SoundGenerator({frequency:600, release:.05});
     dieSound = new SoundGenerator({frequency:120, release:.3, slide:-.2});
     hitSound = new SoundGenerator({frequency:200, release:.15, noise:.1});
+    laserSound = new Sound([0.7,,50,.5,.05,.1,-3,0.8,.05,-300])
+    setTimeout(() => {
+        laserSound.play() // debug
+    }, 5000);
     
     resetGame();
 }
@@ -356,6 +361,7 @@ function gameUpdate() {
         let laserCells = [];
         let laserPos = snake[0].add(direction).copy();
         fireButtonPressed = false;
+        laserSound.play();
         
         // Fill laserCells array with all positions from head to edge
         while (laserPos.x >= 0 && laserPos.x < gridSize.x && laserPos.y >= 0 && laserPos.y < gridSize.y) {
